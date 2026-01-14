@@ -1,0 +1,53 @@
+name: Delete Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to delete'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+      confirmDeletion:
+        description: 'Type DELETE to confirm deletion'
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Validate Deletion Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmDeletion }}" != "DELETE" ]; then
+            echo "Error: Deletion not confirmed. Please type DELETE to confirm."
+            exit 1
+          fi
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete Resource Group
+        run: |
+          echo "Deleting resource group: ${{ secrets.AZURE_RESOURCE_GROUP }}"
+          az group delete \
+            --name ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --yes \
+            --no-wait
+          
+          echo "Resource group deletion initiated."
+          echo "The deletion process will continue in the background."
+          echo "You can check the status in the Azure Portal."
